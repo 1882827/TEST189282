@@ -1,0 +1,223 @@
+local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/MlFrvWM/BBLT81/main/BL81827TC", true))()
+
+local window = library:AddWindow("Veyna | PAID", {
+    main_color = Color3.fromRGB(61, 10, 161),
+    min_size = Vector2.new(685, 800),
+    can_resize = false,
+})
+
+local tabSpecs = window:AddTab("Specs")
+tabSpecs:AddLabel("View Player").TextSize = 30
+
+local Players     = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Camera      = workspace:WaitForChild("CurrentCamera")
+
+local SelectPlayer = nil
+
+local function getSpecsDisplayText(plr)
+    return plr.DisplayName .. " | " .. plr.Name
+end
+
+local function getStat(plr, name)
+    local stats = plr:FindFirstChild("leaderstats")
+    if not stats then return 0 end
+    local val = stats:FindFirstChild(name)
+    if not val then return 0 end
+    if val:IsA("IntValue") or val:IsA("NumberValue") then
+        return tonumber(val.Value) or 0
+    elseif val:IsA("StringValue") then
+        return parseValue(val.Value)
+    end
+    return 0
+end
+
+local specsDropdown = tabSpecs:AddDropdown("Select Player", function(selectedText)
+    SelectPlayer = nil
+    if selectedText ~= "No Player" then
+        local username = selectedText:match("|%s*(.+)$")
+        if username then
+            SelectPlayer = Players:FindFirstChild(username)
+        end
+    end
+end)
+specsDropdown:Add("No Player")
+
+local function refreshPlayerDropdown()
+    local currentSelection = SelectPlayer and SelectPlayer.Name or nil
+    for _, item in ipairs(specsDropdown:GetItems()) do
+        if item ~= "No Player" then
+            specsDropdown:Remove(item)
+        end
+    end
+    for _, plr in ipairs(Players:GetPlayers()) do
+        specsDropdown:Add(getSpecsDisplayText(plr))
+    end
+    if currentSelection and Players:FindFirstChild(currentSelection) then
+        specsDropdown:Set(getSpecsDisplayText(Players[currentSelection]))
+        SelectPlayer = Players[currentSelection]
+    else
+        specsDropdown:Set("No Player")
+        SelectPlayer = nil
+    end
+end
+
+refreshPlayerDropdown()
+Players.PlayerAdded:Connect(refreshPlayerDropdown)
+Players.PlayerRemoving:Connect(refreshPlayerDropdown)
+
+local function formatValue(n)
+    n = tonumber(n) or 0
+    local absn, sign = math.abs(n), n < 0 and "-" or ""
+    if absn >= 1e15 then return string.format("%s%.2fQa", sign, absn/1e15)
+    elseif absn >= 1e12 then return string.format("%s%.2fT",  sign, absn/1e12)
+    elseif absn >= 1e9  then return string.format("%s%.2fB",  sign, absn/1e9)
+    elseif absn >= 1e6  then return string.format("%s%.2fM",  sign, absn/1e6)
+    elseif absn >= 1e3  then return string.format("%s%.2fK",  sign, absn/1e3)
+    else return tostring(n) end
+end
+
+local function parseValue(s)
+    if not s then return 0 end
+    s = tostring(s):upper():gsub("%s+", ""):gsub(",", "")
+    local suffixes = { K=1e3, M=1e6, B=1e9, T=1e12, QA=1e15 }
+    local numPart, suf = s:match("^([%-]?[%d%.]+)(%a*)$")
+    local n = tonumber(numPart) or 0
+    return suf ~= "" and suffixes[suf] and n * suffixes[suf] or n
+end
+
+local lblDisplayName = tabSpecs:AddLabel("")
+local lblUsername    = tabSpecs:AddLabel("")
+local lblStrength    = tabSpecs:AddLabel("")
+local lblDurability  = tabSpecs:AddLabel("")
+local lblAgility     = tabSpecs:AddLabel("")
+local lblRebirths    = tabSpecs:AddLabel("")
+local lblKills       = tabSpecs:AddLabel("")
+
+tabSpecs:AddLabel("--------------------")
+tabSpecs:AddLabel("Advanced Stats").TextSize = 30
+
+local lblBaseDur    = tabSpecs:AddLabel("")
+local lblUltimate   = tabSpecs:AddLabel("")
+local lblPets       = tabSpecs:AddLabel("")
+local lblTotalDur   = tabSpecs:AddLabel("")
+local lblBaseDamage = tabSpecs:AddLabel("")
+local lblWithPets   = tabSpecs:AddLabel("")
+local lblHitsKill   = tabSpecs:AddLabel("")
+local lblTimeKill   = tabSpecs:AddLabel("")
+
+local BASE_DAMAGE_FACTOR     = 0.1
+local PACK_FACTOR_PER_PACK   = 0.0335
+local DEFAULT_ULTIMATE_BOOST = 75
+local DEFAULT_PETS_PER_PACK  = 33.125
+local DEFAULT_PACKS          = 8
+local ATTACK_SPEED           = 1.3
+
+local function safeValue(val, default)
+    val = tonumber(val)
+    return (val and val > 0) and val or default
+end
+
+local function getDynamicStats(plr)
+    local strength   = safeValue(getStat(plr, "Strength"), 1)
+    local durability = safeValue(getStat(plr, "Durability"), 1)
+    local rebirths   = safeValue(getStat(plr, "Rebirths"), 0)
+    local kills      = safeValue(getStat(plr, "Kills"), 0)
+    local agility    = safeValue(getStat(plr, "Agility"), 1)
+    local packs = safeValue(getStat(plr, "Packs"), DEFAULT_PACKS)
+    local ultimatePercent = safeValue(getStat(plr, "UltimateBoost"), DEFAULT_ULTIMATE_BOOST)
+    local petsBoostPercent = safeValue(getStat(plr, "PetsBoost"), DEFAULT_PETS_PER_PACK * packs)
+    local ultimateBoost = durability * (ultimatePercent / 100)
+    local petsBoost = durability * (petsBoostPercent / 100)
+    local totalDur = durability + ultimateBoost + petsBoost
+    local baseDamage = math.max(1, strength * BASE_DAMAGE_FACTOR)
+    local withPets   = math.max(1, strength * (BASE_DAMAGE_FACTOR + PACK_FACTOR_PER_PACK * packs))
+    local hitsToKill = math.max(1, math.ceil(totalDur / withPets))
+    local timeToKill = hitsToKill / ATTACK_SPEED
+    return {
+        strength = strength,
+        durability = durability,
+        agility = agility,
+        rebirths = rebirths,
+        kills = kills,
+        packs = packs,
+        ultimateBoost = ultimateBoost,
+        petsBoost = petsBoost,
+        totalDur = totalDur,
+        baseDamage = baseDamage,
+        withPets = withPets,
+        hitsToKill = hitsToKill,
+        timeToKill = timeToKill,
+        ultimatePercent = ultimatePercent,
+        petsBoostPercent = petsBoostPercent
+    }
+end
+
+task.spawn(function()
+    while task.wait(1) do
+        if SelectPlayer and SelectPlayer.Parent then
+            lblDisplayName.Text = "Displayname: " .. SelectPlayer.DisplayName
+            lblUsername.Text    = "Username: @" .. SelectPlayer.Name
+            local data = getDynamicStats(SelectPlayer)
+            if data then
+                lblStrength.Text   = "Strength: "   .. formatValue(data.strength)
+                lblDurability.Text = "Durability: " .. formatValue(data.durability)
+                lblAgility.Text    = "Agility: "    .. formatValue(data.agility)
+                lblRebirths.Text   = "Rebirths: "   .. formatValue(data.rebirths)
+                lblKills.Text      = "Kills: "      .. formatValue(data.kills)
+                lblBaseDur.Text  = "Base Durability: " .. formatValue(data.durability)
+                lblUltimate.Text = string.format("Ultimate Boost: %s (+%d%%)", formatValue(data.ultimateBoost), data.ultimatePercent)
+                lblPets.Text     = string.format("Pets Boost (%d): %s", data.packs, formatValue(data.petsBoost))
+                lblTotalDur.Text       = "TOTAL DURABILITY: " .. formatValue(data.totalDur)
+                lblTotalDur.TextColor3 = Color3.fromRGB(0, 255, 255)
+                lblBaseDamage.Text = "Base Damage: " .. formatValue(data.baseDamage)
+                lblWithPets.Text   = string.format("With Pets (%d): %s", data.packs, formatValue(data.withPets))
+                lblWithPets.TextColor3 = Color3.fromRGB(255, 0, 0)
+                lblHitsKill.Text = "Hits to Kill: " .. (data.hitsToKill == 1 and "INSTANT" or tostring(data.hitsToKill))
+                lblTimeKill.Text = "Time to Kill: " .. (data.hitsToKill == 1 and "INSTANT" or string.format("%.1fs", data.timeToKill))
+            end
+        else
+            lblDisplayName.Text, lblUsername.Text = "", ""
+            lblStrength.Text, lblDurability.Text  = "", ""
+            lblAgility.Text, lblRebirths.Text     = "", ""
+            lblKills.Text                         = ""
+            lblBaseDur.Text, lblUltimate.Text     = "", ""
+            lblPets.Text, lblTotalDur.Text        = "", ""
+            lblBaseDamage.Text, lblWithPets.Text  = "", ""
+            lblHitsKill.Text, lblTimeKill.Text    = ""
+        end
+    end
+end)
+
+tabSpecs:AddButton("Print Own Stats", function()
+    local data = getDynamicStats(LocalPlayer)
+    if data then
+        print("[SPECS] Local Player Stats:")
+        print("Strength:", data.strength, "Durability:", data.durability, "Agility:", data.agility, "Rebirths:", data.rebirths, "Kills:", data.kills)
+        print("Total Dur:", data.totalDur, "Base Damage:", data.baseDamage, "With Pets:", data.withPets)
+        print("Hits to Kill:", data.hitsToKill, "Time to Kill:", data.timeToKill)
+    end
+end).TextColor3 = Color3.fromRGB(255,255,255)
+
+local spectateConn
+tabSpecs:AddButton("Spectate", function()
+    if SelectPlayer and SelectPlayer ~= LocalPlayer then
+        local humanoid = (SelectPlayer.Character or SelectPlayer.CharacterAdded:Wait()):WaitForChild("Humanoid")
+        Camera.CameraSubject = humanoid
+        if spectateConn then
+            spectateConn:Disconnect()
+        end
+        spectateConn = SelectPlayer.CharacterAdded:Connect(function(newChar)
+            Camera.CameraSubject = newChar:WaitForChild("Humanoid")
+        end)
+    end
+end).TextColor3 = Color3.fromRGB(255,255,255)
+
+tabSpecs:AddButton("Stop Spectate", function()
+    if spectateConn then
+        spectateConn:Disconnect()
+        spectateConn = nil
+    end
+    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+    Camera.CameraSubject = char:WaitForChild("Humanoid")
+end).TextColor3 = Color3.fromRGB(255,255,255)
