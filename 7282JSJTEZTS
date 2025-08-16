@@ -9,11 +9,12 @@ local window = library:AddWindow("Veyna | PAID", {
 local tabSpecs = window:AddTab("Specs")
 tabSpecs:AddLabel("View Player").TextSize = 30
 
-local Players     = game:GetService("Players")
+local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local Camera      = workspace:WaitForChild("CurrentCamera")
 
 local SelectPlayer = nil
+local SelectPlayerName = ""
+local previousValues = {}
 
 local function getSpecsDisplayText(plr)
     return plr.DisplayName .. " | " .. plr.Name
@@ -27,44 +28,41 @@ local function getStat(plr, name)
     if val:IsA("IntValue") or val:IsA("NumberValue") then
         return tonumber(val.Value) or 0
     elseif val:IsA("StringValue") then
-        return parseValue(val.Value)
+        local num = tonumber(val.Value:match("%d+"))
+        return num or 0
     end
     return 0
 end
 
-local specsDropdown = tabSpecs:AddDropdown("Select Player", function(selectedText)
-    SelectPlayer = nil
-    if selectedText ~= "No Player" then
-        local username = selectedText:match("|%s*(.+)$")
-        if username then
-            SelectPlayer = Players:FindFirstChild(username)
-        end
-    end
+local specsDropdown = tabSpecs:AddDropdown("Select Player", function(Value)
+    SelectPlayerName = Value:match("|%s*(.+)$") or ""
+    SelectPlayer = Players:FindFirstChild(SelectPlayerName)
+    previousValues = {}
 end)
 specsDropdown:Add("No Player")
 
-local function refreshPlayerDropdown()
-    local currentSelection = SelectPlayer and SelectPlayer.Name or nil
-    for _, item in ipairs(specsDropdown:GetItems()) do
-        if item ~= "No Player" then
-            specsDropdown:Remove(item)
-        end
-    end
-    for _, plr in ipairs(Players:GetPlayers()) do
-        specsDropdown:Add(getSpecsDisplayText(plr))
-    end
-    if currentSelection and Players:FindFirstChild(currentSelection) then
-        specsDropdown:Set(getSpecsDisplayText(Players[currentSelection]))
-        SelectPlayer = Players[currentSelection]
-    else
-        specsDropdown:Set("No Player")
-        SelectPlayer = nil
-    end
+for _, plr in pairs(Players:GetPlayers()) do
+    specsDropdown:Add(getSpecsDisplayText(plr))
 end
 
-refreshPlayerDropdown()
-Players.PlayerAdded:Connect(refreshPlayerDropdown)
-Players.PlayerRemoving:Connect(refreshPlayerDropdown)
+Players.PlayerAdded:Connect(function(plr)
+    specsDropdown:Add(getSpecsDisplayText(plr))
+end)
+
+Players.PlayerRemoving:Connect(function(plr)
+    for _, item in ipairs(specsDropdown:GetItems()) do
+        if item:match("|%s*(.+)$") == plr.Name then
+            specsDropdown:Remove(item)
+            break
+        end
+    end
+    if SelectPlayer and SelectPlayer.Name == plr.Name then
+        specsDropdown:Set("No Player")
+        SelectPlayer = nil
+        SelectPlayerName = ""
+        previousValues = {}
+    end
+end)
 
 local function formatValue(n)
     n = tonumber(n) or 0
