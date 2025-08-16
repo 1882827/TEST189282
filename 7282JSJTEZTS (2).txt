@@ -84,25 +84,25 @@ local function parseValue(s)
     return suf ~= "" and suffixes[suf] and n * suffixes[suf] or n
 end
 
-local lblDisplayName = tabSpecs:AddLabel("")
-local lblUsername    = tabSpecs:AddLabel("")
-local lblStrength    = tabSpecs:AddLabel("")
-local lblDurability  = tabSpecs:AddLabel("")
-local lblAgility     = tabSpecs:AddLabel("")
-local lblRebirths    = tabSpecs:AddLabel("")
-local lblKills       = tabSpecs:AddLabel("")
+local lblDisplayName = tabSpecs:AddLabel("Displayname: -")
+local lblUsername    = tabSpecs:AddLabel("Username: -")
+local lblStrength    = tabSpecs:AddLabel("Strength: -")
+local lblDurability  = tabSpecs:AddLabel("Durability: -")
+local lblAgility     = tabSpecs:AddLabel("Agility: -")
+local lblRebirths    = tabSpecs:AddLabel("Rebirths: -")
+local lblKills       = tabSpecs:AddLabel("Kills: -")
 
 tabSpecs:AddLabel("--------------------")
 tabSpecs:AddLabel("Advanced Stats").TextSize = 30
 
-local lblBaseDur    = tabSpecs:AddLabel("")
-local lblUltimate   = tabSpecs:AddLabel("")
-local lblPets       = tabSpecs:AddLabel("")
-local lblTotalDur   = tabSpecs:AddLabel("")
-local lblBaseDamage = tabSpecs:AddLabel("")
-local lblWithPets   = tabSpecs:AddLabel("")
-local lblHitsKill   = tabSpecs:AddLabel("")
-local lblTimeKill   = tabSpecs:AddLabel("")
+local lblBaseDur    = tabSpecs:AddLabel("Base Durability: -")
+local lblUltimate   = tabSpecs:AddLabel("Ultimate Boost: -")
+local lblPets       = tabSpecs:AddLabel("Pets Boost: -")
+local lblTotalDur   = tabSpecs:AddLabel("Total Durability: -")
+local lblBaseDamage = tabSpecs:AddLabel("Base Damage: -")
+local lblWithPets   = tabSpecs:AddLabel("With Pets: -")
+local lblHitsKill   = tabSpecs:AddLabel("Hits to Kill: -")
+local lblTimeKill   = tabSpecs:AddLabel("Time to Kill: -")
 
 local BASE_DAMAGE_FACTOR     = 0.1
 local PACK_FACTOR_PER_PACK   = 0.0335
